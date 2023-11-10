@@ -1,4 +1,4 @@
-# STT Project Using Deep Speech Models
+# STT Project
 
 ## Introduction
 
@@ -17,7 +17,7 @@ The project is organized into different language directories with further subdiv
 ### Key Components
 
 - `logger_config.py`: Sets up custom logging for audio processing.
-- `model_config_xz.py`: Contains configuration settings for the STT models, including model URLs and versions.
+- `model_config.py`: Contains configuration settings for the STT models, including model URLs and versions.
 - `stt_class.py`: The primary class for handling STT operations. It includes methods for model downloading, audio processing, and metrics computation.
 - `utils.py`: Contains utility functions for data preprocessing and audio processing.
 - `main.py`: The main script to run the STT process, integrating components from other modules.
@@ -33,10 +33,14 @@ The project involves several key steps:
 ## How to Run
 
 1. Install required dependencies (list dependencies if necessary).
-2. Set the correct paths in `model_config_xz.py`.
+2. Set the correct paths in `model_config.py`.
 3. Run `main.py` with the appropriate arguments for the audio and text files.
 
 ## Contributing
 
 Contributions to the project are welcome once it is done. Please ensure to follow the code structure and naming conventions.
+
+# License
+
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
 
