@@ -114,9 +114,12 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Results files
+# Results files and models
 *.csv
+kenlm.scorer
+model.tflite
 
 # Exclude 'results' and 'logs' directories
 **results/
 **logs/
+
