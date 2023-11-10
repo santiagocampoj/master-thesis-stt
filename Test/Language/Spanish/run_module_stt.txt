@@ -1,0 +1,8 @@
+python3 module_stt.py -a /mnt/corpus/ADITU/ADULT1EU/BLOCK00/SES001/U0001002.wav -l eu
+
+# reference_transcription = "aupa Zuber aber  badakizu datorren  hamalauan nire urtebetetzea dela ezta bueno ba astelehenean jausten da baina bueno ez dakit asteburu horretan hamabi hamahiru uste dut dela ala hemeretzian eta hogeian zeozer egingo dugun badakizu ere Kristinaren urtebetetzea  ondino  ez  {FRA} dagoela ospatuta eta klaro berarekin egitea  ba igual hoberena izango da ez dakit {FIL}  aita badakizu daukala txoko bat eta ez dakit bion artean egingo dugun han txokoan {FRA}  ala bueno ba ez dakit ondo zelan egingo dugun   baina gauza da hemeretzi gauean ezin dugula ba nik {FIL} Enekoren lagunaren partez beste urtebetetze bat daukadalako  eta ba noizbait egin behar dugu baina klaro denok konforme egoteko ba ez dut oso ondo ikusten aber zelan ikusten duzun zuk zuk hitzegiozu gure baduzu Ainhoa eta Kristinagaz baita eta Veronica Rafa eta  hauegaz be hitz  {FRA} egingo dugu por que  klaro denok batera egin  beharko dugu eta  nik nahiko nuke ia denok {FIL}  geratzen {FRA} geratzen garen baina ba zail samar ikusten dut eta ja  ba klaro ekaina da   batzuk {FIL} badoazte kanpora  eta bueno ba aber zela egiten dugun bale deitu mesedez ba aber {FIL}   ez dakit Kristinagaz hitz egiten duzunean edo  {FRA} eta zeozertan geratuko gara bale benga ba ederto agur"
+
+
+python3 module_stt.py -a /mnt/corpus/Common_Voice_v9.0/eu/clips/common_voice_eu_18595294.mp3 -l eu
+
+reference_transcription = "Hezkuntzak prestatu zituen probak pisa eta antzekoak eredu."

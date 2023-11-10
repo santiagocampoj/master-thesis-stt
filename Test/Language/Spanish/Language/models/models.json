@@ -1,0 +1,26 @@
+{
+    "models": [
+        {
+            "name": "Spanish STT v0.0.1",
+            "language": "Spanish",
+            "version": "v0.0.1",
+            "creator": "Jaco-Assistant",
+            "acoustic": "https://coqui.gateway.scarf.sh/spanish/jaco-assistant/v0.0.1/model.tflite",
+            "scorer": "https://coqui.gateway.scarf.sh/spanish/jaco-assistant/v0.0.1/kenlm_es.scorer",
+            "installed": true,
+            "acoustic_path": "/mnt/aholab/santi/Documents/audio_process/Test/Language/Spanish/Language/models/Spanish STT v0.0.1/model.tflite",
+            "scorer_path": "/mnt/aholab/santi/Documents/audio_process/Test/Language/Spanish/Language/models/Spanish STT v0.0.1/kenlm_es.scorer"
+        },
+        {
+            "name": "Basque STT v0.1.7",
+            "language": "Basque",
+            "version": "v0.1.7",
+            "creator": "ITML",
+            "acoustic": "https://aholab.ehu.eus/~xzuazo/models/Basque STT v0.1.7/model.tflite",
+            "scorer": "https://aholab.ehu.eus/~xzuazo/models/Basque STT v0.1.7/kenlm.scorer",
+            "installed": true,
+            "acoustic_path": "/mnt/aholab/santi/Documents/audio_process/Test/Language/Spanish/Language/models/Basque STT v0.1.7/model.tflite",
+            "scorer_path": "/mnt/aholab/santi/Documents/audio_process/Test/Language/Spanish/Language/models/Basque STT v0.1.7/kenlm.scorer"
+        }
+    ]
+}
