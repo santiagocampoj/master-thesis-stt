@@ -1,17 +1,10 @@
 import pandas as pd
 import os
-import logging
 from pathlib import Path
 from tqdm import tqdm
+
 import xml.etree.ElementTree as ET
 import re
-
-pd.set_option('display.max_rows', None)   # Display all rows
-pd.set_option('display.max_columns', None) # Display all columns
-pd.set_option('display.width', None)      # Ensure the display isn't truncated
-pd.set_option('display.max_colwidth', None)
-
-logger = logging.getLogger("audio_processing")
 
 #################
 # PREPROCESSING #
@@ -23,8 +16,8 @@ def create_dir(path):
     database = db_name(path)
     if not os.path.exists(f'{database}/logs/'):
         os.makedirs(f'{database}/logs/')
-    if not os.path.exists(f'{database}/csv_results/'):
-        os.makedirs(f'{database}/csv_results/')
+    if not os.path.exists(f'{database}/results/'):
+        os.makedirs(f'{database}/results/')
     return database
 
 def parse_xml(xml_file):
@@ -96,7 +89,7 @@ def load_data(stt, prompt_path, wave_path):
 ####################
 # PROCESSING AUDIO #
 ####################
-def transcribe_audio(stt, audio_path, reference, start_time, end_time):
+def transcribe_audio(stt, audio_path, reference, start_time, end_time, logger):
     try:
         hypothesis = stt.transcribe(audio_path, start_time=start_time, end_time=end_time)
     except FileNotFoundError:
@@ -166,7 +159,7 @@ def save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_
 ######################
 # LOGGER INFORMATION #
 ######################
-def wwer_info(total_audios, total_words, total_errors, wwer, mean_wer):
+def wwer_info(total_audios, total_words, total_errors, wwer, mean_wer, logger):
     logger.info("\nWWER INFO")
     logger.info(f'Total audios: \t{total_audios}')
     logger.info(f'Total words: \t{total_words}')
@@ -174,7 +167,7 @@ def wwer_info(total_audios, total_words, total_errors, wwer, mean_wer):
     logger.info(f"Weighted WER: \t{wwer}")
     logger.info(f"Mean WER: \t{mean_wer}")
 
-def header_info(stt, path, total_audios, total_words):
+def header_info(stt, path, total_audios, total_words, logger):
     logger.info("\nHEADER INFO")
     logger.info(f"Model:\t\t {stt.config['name']}")
     logger.info(f"Version:\t {stt.config['version']}")
@@ -182,7 +175,7 @@ def header_info(stt, path, total_audios, total_words):
     logger.info(f'Total audios:\t {total_audios}')
     logger.info(f"Total words:\t {total_words}")
 
-def processing_info(idx, total_audios, audio_file, reference, hypothesis, wer, word_count, error_count):
+def processing_info(idx, total_audios, audio_file, reference, hypothesis, wer, word_count, error_count, logger):
     logger.info("\nPROCESSING INFO")
     logger.info(f"Processing audio #{idx} of {total_audios}")
     logger.info(f"Audio file: {audio_file}")
