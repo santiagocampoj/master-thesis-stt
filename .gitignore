@@ -118,6 +118,7 @@ dmypy.json
 *.csv
 *.scorer
 *.tflite
+*.json
 
 # Exclude 'results' and 'logs' directories
 **results/
