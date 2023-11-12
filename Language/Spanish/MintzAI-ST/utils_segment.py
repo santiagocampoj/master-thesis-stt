@@ -2,7 +2,9 @@ import pandas as pd
 import os
 from pathlib import Path
 from tqdm import tqdm
-
+from pydub import AudioSegment
+from pydub.silence import split_on_silence
+from stt_class_xz import *
 #################
 # PREPROCESSING #
 #################
@@ -67,9 +69,45 @@ def load_data(stt, prompt_path, wave_path, logger):
 ####################
 # PROCESSING AUDIO #
 ####################
+def segment_audio(audio_path, logger, min_silence_len=500, silence_thresh=-30, keep_silence=200):
+    sound = AudioSegment.from_file(audio_path)
+    chunks = split_on_silence(
+        sound,
+        min_silence_len=min_silence_len,
+        silence_thresh=silence_thresh,
+        keep_silence=keep_silence
+    )
+    logger.info(f"Total segments created: {len(chunks)}")
+    return chunks
+
+def transcribe_chunks(stt, chunks, sample_rate, logger):
+    transcriptions = []
+    for i, chunk in enumerate(chunks):
+        temp_file_path = f"/tmp/chunk_{i}.wav"
+        chunk.export(temp_file_path, format="wav")
+        logger.info(f"Exporting chunk {i} to {temp_file_path}")
+
+        audio_data = read_wav(temp_file_path, sample_rate)
+        transcription = stt.model.stt(audio_data)
+        transcriptions.append(transcription)
+
+        os.remove(temp_file_path)
+        logger.info(f"Processed and removed temporary file: {temp_file_path}")
+    return transcriptions
+
 def transcribe_audio(stt, audio_path, reference, logger):
     try:
-        hypothesis = stt.run(audio_path)
+        sound = AudioSegment.from_file(audio_path)
+        duration_seconds = len(sound) / 1000
+
+        if duration_seconds >= 11:
+            logger.info(f"Audio is {duration_seconds} long, which is over 11 seconds, segmenting audio")
+            chunks = segment_audio(audio_path, logger)
+            transcriptions = transcribe_chunks(stt, chunks, stt.model.sampleRate(), logger=logger)
+            hypothesis = " ".join(transcriptions)  # concatenate transcriptions
+        else:
+            logger.info(f"Audio is {duration_seconds} long, which is less than 11 seconds, processing whole audio")
+            hypothesis = stt.run(audio_path)
     except FileNotFoundError:
         logger.info(f"File {audio_path} does not exist. Skipping.")
         return None
@@ -79,10 +117,11 @@ def transcribe_audio(stt, audio_path, reference, logger):
 
     reference_transformed = stt.transformation(reference)
     hypothesis_transformed = stt.transformation(hypothesis)
-
     wer = stt.compute_wer(reference_transformed, hypothesis_transformed)
     word_count = stt.compute_word_count(reference_transformed)
     error_count = stt.compute_error_count(wer, word_count)
+
+    logger.info(f"Transcription completed for {audio_path}")
     
     return wer, word_count, reference_transformed, hypothesis_transformed, error_count
 

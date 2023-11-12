@@ -1,49 +1,35 @@
-from model_config_general import SPANISH_STT
-from stt_class_general import STT
-
+from model_config_xz import *
+from stt_class_xz import *
 from .utils import *
 
+from logger_config import setup_file_logging
 from pathlib import Path
-import logging
 import argparse
 
-logger = logging.getLogger("pydub.converter")
-logger.setLevel(logging.WARNING)
-
 def main():
-    # set parser
     parser = argparse.ArgumentParser(description="Insert the audio and text file to be processed.")
     parser.add_argument('-a', '--audio-path', required=True, help='Path to audio files directory.')
     parser.add_argument('-t', '--text-path', required=True, help='Path to text metadata file.')
     args = parser.parse_args()
 
-    stt = STT(SPANISH_STT)
-    stt.load_model()
+    language_code = 'es'
+    stt = STT(language_code)
 
-    # Set the audio path
     audio_path = Path(args.audio_path)
+    text_path = Path(args.text_path)
+    database = db_name(audio_path)
     
-    # create dir to save results and logs
-    database = create_dir(audio_path)
-    
-    #set up the logger
-    logger = logging.getLogger("audio_processing")
-    logger.setLevel(logging.INFO)
-    fh = logging.FileHandler(f'{database}/logs/espanish_model.log')
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
-    
-    # Get general information
-    validation_df, total_words = load_data(stt, args.text_path, args.audio_path)
-    total_audios = len(validation_df)
-    header_info(stt, audio_path, total_audios, total_words)
-    
-    # Processing audio files
-    results_df = process_audios(stt, validation_df, total_audios, audio_path)
+    logger = setup_file_logging(f'{database}/logs/{database}_{language_code}_model.log')
 
-    # Saving results
-    calculate_wwer(stt, results_df, total_audios, total_words, audio_path, database)
+    database = create_dir(audio_path, logger)
+    
+    validation_df, total_words = load_data(stt, text_path, audio_path, logger)
+    total_audios = len(validation_df)
+    header_info(stt, audio_path, total_audios, total_words, logger)
+    
+    results_df = process_audios(stt, validation_df, total_audios, audio_path, logger)
+    calculate_wwer(stt, results_df, total_audios, total_words, audio_path, database, logger)
 
 if __name__ == "__main__":
     main()
+

@@ -1,5 +1,5 @@
 from model_config_xz import *
-from stt_class_xz import STT
+from stt_class_xz import *
 from .utils import *
 
 from logger_config import setup_file_logging

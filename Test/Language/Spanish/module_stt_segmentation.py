@@ -83,7 +83,8 @@ def read_wav(audio_path, desired_sample_rate):
     
     return audio
 
-def segment_audio(audio_path, min_silence_len=600, silence_thresh=-40, keep_silence=200):
+# def segment_audio(audio_path, min_silence_len=500, silence_thresh=-50, keep_silence=400):
+def segment_audio(audio_path, min_silence_len=400, silence_thresh=-50, keep_silence=350):
     """
     Splits the audio file into chunks based on silence.
     
@@ -188,7 +189,7 @@ def main():
     stt = STT(language)
 
     try:
-        threshold = 30
+        threshold = 11
         sound = AudioSegment.from_file(audio_path)
         duration_seconds = len(sound) / 1000
 
@@ -199,7 +200,7 @@ def main():
             transcriptions = transcribe_chunks(stt, chunks, stt.model.sampleRate())
             full_transcript = ' '.join(transcriptions)
         else:
-            logging.debug(f"Transcribing file {audio_path} as a single chunk because its duration is less than 1 minute...")
+            logging.debug(f"Transcribing file {audio_path} as a single chunk because its duration is less than {threshold} seconds...")
             full_transcript = stt.run(audio_path)
 
         logging.debug("Transcription completed.")
