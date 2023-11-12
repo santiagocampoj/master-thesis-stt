@@ -15,11 +15,9 @@ def main():
     language_code = 'es'
     stt = STT(language_code)
 
-    # The path processing here should match your directory structure and needs
     path = Path(args.audio_path)
     database = create_dir(path)
 
-    # Setting up the logger using the function from logger_config.py
     logger = setup_file_logging(f'{database}/logs/{database}_{language_code}_model.log')
 
     validation_df, total_words = load_data(stt, args.text_path)

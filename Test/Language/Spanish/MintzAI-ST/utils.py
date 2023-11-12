@@ -9,40 +9,59 @@ from tqdm import tqdm
 def db_name(path):
     return Path(path).parts[3].split('.')[0]
 
-def create_dir(path):
+def create_dir(path, logger):
     database = db_name(path)
-    if not os.path.exists(f'{database}/logs/'):
-        os.makedirs(f'{database}/logs/')
-    if not os.path.exists(f'{database}/results/'):
-        os.makedirs(f'{database}/results/')
+    logs_path = f'{database}/logs/'
+    results_path = f'{database}/results/'
+
+    if not os.path.exists(logs_path):
+        os.makedirs(logs_path)
+        logger.info(f"Created logs directory: {logs_path}")
+    else:
+        logger.info(f"Logs directory already exists: {logs_path}")
+
+    if not os.path.exists(results_path):
+        os.makedirs(results_path)
+        logger.info(f"Created results directory: {results_path}")
+    else:
+        logger.info(f"Results directory already exists: {results_path}")
+
     return database
 
-def load_data(stt, prompt_path, wave_path):
+def load_data(stt, prompt_path, wave_path, logger):
     wav_files = [file for file in os.listdir(wave_path) if file.endswith('.m4a')]
     if not wav_files:
+        logger.error("No audio file found in the directory.")
         raise ValueError("No audio file found in the directory.")
-    
+
+    logger.info(f"Found {len(wav_files)} audio files.")
+
     transcripts = []
     for wav_file in wav_files:
         txt_filename = wav_file.replace('.m4a', '.es')
         txt_filepath = os.path.join(prompt_path, txt_filename)
         
         if not os.path.exists(txt_filepath):
+            logger.error(f"Transcription file {txt_filepath} does not exist.")
             raise ValueError(f"Transcription file {txt_filepath} does not exist.")
-        
+
         with open(txt_filepath, 'r', encoding='utf-8') as txt_file:
             transcript = txt_file.readline().strip()
             transcripts.append(transcript)
+        logger.info(f"Loaded transcript for {wav_file}")
 
     if len(wav_files) != len(transcripts):
+        logger.error("The number of lines in the txt file doesn't match the number of wav files.")
         raise ValueError("The number of lines in the txt file doesn't match the number of wav files.")
-        
+
     validation_df = pd.DataFrame({
         'wav_filename': wav_files,
         'transcript': transcripts
     })
 
     total_words = validation_df['transcript'].apply(lambda x: len(stt.transformation(x).split())).sum()
+    logger.info(f"Total words in transcripts: {total_words}")
+
     return validation_df, total_words
 
 ####################

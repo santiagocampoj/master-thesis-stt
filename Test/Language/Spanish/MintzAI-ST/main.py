@@ -17,11 +17,13 @@ def main():
 
     audio_path = Path(args.audio_path)
     text_path = Path(args.text_path)
-    database = create_dir(audio_path)
-
-    logger = setup_file_logging(f'{database}/logs/{database}_{language_code}_model.log')
+    database = db_name(audio_path)
     
-    validation_df, total_words = load_data(stt, text_path, audio_path)
+    logger = setup_file_logging(f'{database}/logs/{database}_{language_code}_model.log')
+
+    database = create_dir(audio_path, logger)
+    
+    validation_df, total_words = load_data(stt, text_path, audio_path, logger)
     total_audios = len(validation_df)
     header_info(stt, audio_path, total_audios, total_words, logger)
     
@@ -30,3 +32,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
