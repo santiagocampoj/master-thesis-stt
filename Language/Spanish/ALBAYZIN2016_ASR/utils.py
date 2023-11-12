@@ -175,7 +175,7 @@ def header_info(stt, path, total_audios, total_words, logger):
     logger.info(f'Total audios:\t {total_audios}')
     logger.info(f"Total words:\t {total_words}")
 
-def processing_info(idx, total_audios, audio_file, reference, hypothesis, wer, word_count, error_count, logger):
+def processing_info(idx, total_audios, audio_file, reference, hypothesis, wer, word_count, error_count):
     logger.info("\nPROCESSING INFO")
     logger.info(f"Processing audio #{idx} of {total_audios}")
     logger.info(f"Audio file: {audio_file}")
