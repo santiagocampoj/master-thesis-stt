@@ -8,6 +8,7 @@ from stt import Model
 from coqui_stt_model_manager.modelmanager import ModelManager
 from pydub import AudioSegment
 from pydub.silence import split_on_silence
+import jiwer
 
 STT_HOST = 'https://coqui.gateway.scarf.sh'
 STT_HOST_AHOLAB = 'https://aholab.ehu.eus/~xzuazo/models'
@@ -117,7 +118,6 @@ def transcribe_chunks(stt, chunks, sample_rate):
     return transcriptions
 
 
-
 class STT:
     def __init__(self, lang, scorer=True):
         self.lang = lang
@@ -173,6 +173,44 @@ class STT:
         text = self.model.stt(audio)
         logging.debug('[STT:%s] Transcription: "%s"', self.lang, text)
         return text
+    
+    def compute_wer(self, reference, hypothesis):
+        reference_transformed = self.transformation(reference)
+        hypothesis_transformed = self.transformation(hypothesis)
+        return jiwer.wer(reference_transformed, hypothesis_transformed)
+
+    def compute_word_count(self, reference):
+        reference_transformed = self.transformation(reference)
+        words = len(reference_transformed.split())
+        return words
+
+    def compute_error_count(self, wer, word_count):
+        return int(round(wer * word_count))
+
+
+
+def find_best_silence_params(stt, audio_path, correct_reference):
+    min_silence_lens = range(400, 1001, 200)
+    silence_threshs = range(-50, -20, 10)
+    keep_silences = range(100, 501, 100)
+    best_wer = float('inf')
+    best_params = None
+
+    for min_silence_len in min_silence_lens:
+        for silence_thresh in silence_threshs:
+            for keep_silence in keep_silences:
+                chunks = segment_audio(audio_path, min_silence_len, silence_thresh, keep_silence)
+                transcriptions = transcribe_chunks(stt, chunks, stt.model.sampleRate())
+                full_transcript = ' '.join(transcriptions)
+                wer = stt.compute_wer(correct_reference, full_transcript)
+
+                if wer < best_wer:
+                    best_wer = wer
+                    best_params = (min_silence_len, silence_thresh, keep_silence)
+
+    return best_params, best_wer
+
+
 
 def main():
     parser = argparse.ArgumentParser(description='Transcribe an audio file.')
