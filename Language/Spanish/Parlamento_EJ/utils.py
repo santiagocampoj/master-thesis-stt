@@ -73,7 +73,6 @@ def transcribe_audio(stt, audio_path, reference, logger):
     if reference is None or reference.strip() == "":
         logger.info(f"Reference transcription missing or empty for {audio_path}. Skipping.")
         return None
-
     try:
         hypothesis = stt.run(audio_path)
         if hypothesis is None or hypothesis.strip() == "":
@@ -110,7 +109,6 @@ def process_audios(stt, validation_df, total_audios, path, logger):
             wer, word_count, reference_transformed, hypothesis_transformed, error_count = result
             results_df.loc[idx] = [audio_file, reference_transformed, hypothesis_transformed, wer, word_count, error_count]
             processing_info(idx+1, total_audios, audio_file, reference_transformed, hypothesis_transformed, wer, word_count, error_count, logger)
-    
     return results_df
 
 def calculate_wwer(stt, results_df, total_audios, total_words, audio_path, database, sub_database, section, logger):

@@ -1,29 +1,21 @@
-import time
 import pandas as pd
 import os
-import logging
 from pathlib import Path
 from tqdm import tqdm
 import codecs
-pd.set_option('display.max_rows', None)   # Display all rows
-pd.set_option('display.max_columns', None) # Display all columns
-pd.set_option('display.width', None)      # Ensure the display isn't truncated
-pd.set_option('display.max_colwidth', None)
-
-logger = logging.getLogger("audio_processing")
 
 #################
 # PREPROCESSING #
 #################
 def db_name(path):
-    return Path(path).parts[6].split('.')[0]
+    return Path(path).parts[3].split('.')[0]
 
 def create_dir(path):
     database = db_name(path)
     if not os.path.exists(f'{database}/logs/'):
         os.makedirs(f'{database}/logs/')
-    if not os.path.exists(f'{database}/csv_results/'):
-        os.makedirs(f'{database}/csv_results/')
+    if not os.path.exists(f'{database}/results/'):
+        os.makedirs(f'{database}/results/')
     return database
 
 def load_data(prompt_path, wave_path):
@@ -53,29 +45,32 @@ def load_data(prompt_path, wave_path):
 ####################
 # PROCESSING AUDIO #
 ####################
-def transcribe_audio(stt, audio_path, reference, start_time, end_time):
+def transcribe_audio(stt, audio_path, reference, start_time, end_time, logger):
+    if reference is None or reference.strip() == "":
+        logger.info(f"Reference transcription missing or empty for {audio_path}. Skipping.")
+        return None
     try:
-        hypothesis = stt.transcribe(audio_path, start_time=start_time, end_time=end_time)
+        hypothesis = stt.run(audio_path, start_time=start_time, end_time=end_time)
+        if hypothesis is None or hypothesis.strip() == "":
+            logger.info(f"Hypothesis missing or empty for {audio_path}. Skipping.")
+            return None
     except FileNotFoundError:
-        logger.warning(f"File {audio_path} does not exist. Skipping.")
+        logger.info(f"File {audio_path} does not exist. Skipping.")
+        return None
+    except OSError as e:
+        logger.error(f"OS error occurred when processing file {audio_path}: {e}")
         return None
 
     reference_transformed = stt.transformation(reference)
     hypothesis_transformed = stt.transformation(hypothesis)
 
-    if not reference_transformed:
-        logger.warning(f"Empty reference for audio: {audio_path}. Skipping WER calculation.")
-        return None
-
     wer = stt.compute_wer(reference_transformed, hypothesis_transformed)
-    
     word_count = stt.compute_word_count(reference_transformed)
     error_count = stt.compute_error_count(wer, word_count)
     
     return wer, word_count, reference_transformed, hypothesis_transformed, error_count
 
-def process_audios(stt, validation_df, total_audios, path):
-    print("\nEntering Process Audios")
+def process_audios(stt, validation_df, total_audios, path, logger):
     results_df = pd.DataFrame(columns=['audio_file', 'reference', 'hypothesis', 'wer', 'words', 'errors'])
 
     for idx, row in tqdm(validation_df.iterrows(), total=total_audios, desc="Processing audios"):
@@ -84,30 +79,29 @@ def process_audios(stt, validation_df, total_audios, path):
         reference = row['transcript']
         audio_path = path / audio_file
 
-        result = transcribe_audio(stt, audio_path, reference, row['start_time'], row['end_time'])
+        result = transcribe_audio(stt, audio_path, reference, row['start_time'], row['end_time'], logger)
         if result is not None:
             wer, word_count, reference_transformed, hypothesis_transformed, error_count = result
             results_df.loc[idx] = [audio_file, reference_transformed, hypothesis_transformed, wer, word_count, error_count]
-            processing_info(idx+1, total_audios, audio_file, reference_transformed, hypothesis_transformed, wer, word_count, error_count)
-    
+            processing_info(idx+1, total_audios, audio_file, reference_transformed, hypothesis_transformed, wer, word_count, error_count, logger)
     return results_df
 
-def calculate_wwer(stt, results_df, total_audios, total_words, audio_path, database):
+def calculate_wwer(stt, results_df, total_audios, total_words, audio_path, database, logger):
     total_errors = results_df['errors'].sum()
     wwer = total_errors / total_words
     mean_wer = results_df['wer'].mean()
 
-    wwer_info(total_audios, total_words, total_errors, wwer, mean_wer)
-    save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_wer, audio_path, database)
+    wwer_info(total_audios, total_words, total_errors, wwer, mean_wer, logger)
+    save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_wer, audio_path, database, logger)
 
 
 ##################
 # SAVING RESULTS #
 ##################
-def save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_wer, audio_path, database):
+def save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_wer, audio_path, database, logger):
     final_results_df = pd.DataFrame({
-        'model': [stt.config['name']],
-        'version': [stt.config['version']],
+        'model': [stt.config['name'].replace(" ", "_")],
+        'language': [stt.lang],
         'database': [database],
         'total_audios': [total_audios],
         'total_words': [total_words],
@@ -115,16 +109,20 @@ def save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_
         'wwer': [wwer],
         'mean_wer': [mean_wer]
     })
-    
-    file_name = '{}/csv_results/{}_{}_{}.csv'.format(database, stt.config['name'], stt.config['version'], database)
-    with open(file_name, 'w') as file:
-        final_results_df.to_csv(file, index=False)
+    try:
+        file_name = f"{database}/results/{stt.config['name'].replace('.', '_')}_{database}.csv"
+        file_name = file_name.replace(' ', '_')
+        with open(file_name, 'w') as file:
+            final_results_df.to_csv(file, index=False)
+            logger.info(f"Final results saved in {os.path.abspath(file_name)}")
+    except Exception as e:
+        logger.error(f"Failed to save final results: {e}")
 
 
 ######################
 # LOGGER INFORMATION #
 ######################
-def wwer_info(total_audios, total_words, total_errors, wwer, mean_wer):
+def wwer_info(total_audios, total_words, total_errors, wwer, mean_wer, logger):
     logger.info("\nWWER INFO")
     logger.info(f'Total audios: \t{total_audios}')
     logger.info(f'Total words: \t{total_words}')
@@ -132,7 +130,7 @@ def wwer_info(total_audios, total_words, total_errors, wwer, mean_wer):
     logger.info(f"Weighted WER: \t{wwer}")
     logger.info(f"Mean WER: \t{mean_wer}")
 
-def header_info(stt, path, total_audios, total_words):
+def header_info(stt, path, total_audios, total_words, logger):
     logger.info("\nHEADER INFO")
     logger.info(f"Model:\t\t {stt.config['name']}")
     logger.info(f"Version:\t {stt.config['version']}")
@@ -140,7 +138,7 @@ def header_info(stt, path, total_audios, total_words):
     logger.info(f'Total audios:\t {total_audios}')
     logger.info(f"Total words:\t {total_words}")
 
-def processing_info(idx, total_audios, audio_file, reference, hypothesis, wer, word_count, error_count):
+def processing_info(idx, total_audios, audio_file, reference, hypothesis, wer, word_count, error_count, logger):
     logger.info("\nPROCESSING INFO")
     logger.info(f"Processing audio #{idx} of {total_audios}")
     logger.info(f"Audio file: {audio_file}")
