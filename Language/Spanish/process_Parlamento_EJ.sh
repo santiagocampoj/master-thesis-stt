@@ -1,17 +1,19 @@
 #!/bin/bash
 
+# Activate the 'stt' Conda environment if not already active
 if [[ $CONDA_DEFAULT_ENV != "stt" ]]; then
     source $(conda info --base)/etc/profile.d/conda.sh
     conda activate stt
+    echo "stt conda environment is setup"
 fi
 
 use_nohup=false
-MAX_JOBS=10  # Maximum number of simultaneous jobs
+parent_directory=""
 
 while getopts ":p:n" opt; do
   case $opt in
     p)
-      base_directory="$OPTARG"
+      parent_directory="$OPTARG"
       ;;
     n)
       use_nohup=true
@@ -27,24 +29,32 @@ while getopts ":p:n" opt; do
   esac
 done
 
-if [ -z "$base_directory" ]; then
-    echo "Please provide the base directory using the -p option."
+# Check if parent directory is provided
+if [ -z "$parent_directory" ]; then
+    echo "Please provide the parent directory using the -p option."
     exit 1
 fi
 
-for date_sub_directory in "$base_directory"/*; do
-    if [ -d "$date_sub_directory" ]; then
-        for sub_directory in "$date_sub_directory"/*; do
-            if [ -d "$sub_directory" ]; then
+# Iterate through each sub-directory and its subdirectories
+for sub_directory in "$parent_directory"/*; do
+    if [ -d "$sub_directory" ]; then
+        sub_dir_name=$(basename "$sub_directory")
+        for nested_sub_directory in "$sub_directory"/*; do
+            if [ -d "$nested_sub_directory" ]; then
+                nested_sub_dir_name=$(basename "$nested_sub_directory")
+                log_folder="/home/aholab/santi/Documents/audio_process/Language/Spanish/Parlamento_EJ/nohup_logs/${sub_dir_name}"
+                log_path="${log_folder}/${nested_sub_dir_name}.log"
+
+                echo "Processing directory: $nested_sub_directory"
                 if $use_nohup; then
-                    while (( $(jobs | wc -l) >= $MAX_JOBS )); do
-                        sleep 1
-                    done
-                    nohup python3 -m Parlamento_EJ.main -d "$sub_directory" > /home/aholab/santi/Documents/audio_process/Language/Spanish/Parlamento_EJ/parlamento_ej.log 2>&1 &
+                    mkdir -p "$log_folder" # Create log directory if it doesn't exist
+                    nohup python3 -m Parlamento_EJ.main -d "$nested_sub_directory" > "$log_path" 2>&1 &
+                    wait # Wait for the background process to finish before continuing
                 else
-                    python3 -m Parlamento_EJ.main -d "$sub_directory"
+                    python3 -m Parlamento_EJ.main -d "$nested_sub_directory"
                 fi
             fi
         done
     fi
 done
+

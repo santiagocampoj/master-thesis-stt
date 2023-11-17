@@ -4,6 +4,7 @@
 if [[ $CONDA_DEFAULT_ENV != "stt" ]]; then
     source $(conda info --base)/etc/profile.d/conda.sh
     conda activate stt
+    echo "stt conda environment is setup"
 fi
 
 use_nohup=false
@@ -37,11 +38,17 @@ fi
 # Iterate through each sub-directory and its subdirectories
 for sub_directory in "$parent_directory"/*; do
     if [ -d "$sub_directory" ]; then
+        sub_dir_name=$(basename "$sub_directory")
         for nested_sub_directory in "$sub_directory"/*; do
             if [ -d "$nested_sub_directory" ]; then
+                nested_sub_dir_name=$(basename "$nested_sub_directory")
+                log_folder="/home/aholab/santi/Documents/audio_process/Language/Euskera/v_1_7/Parlamento_EJ/nohup_logs/${sub_dir_name}"
+                log_path="${log_folder}/${nested_sub_dir_name}.log"
+
                 echo "Processing directory: $nested_sub_directory"
                 if $use_nohup; then
-                    nohup python3 -m Parlamento_EJ.main -d "$nested_sub_directory" > /home/aholab/santi/Documents/audio_process/Language/Spanish/Parlamento_EJ/parlamento_ej.log 2>&1 &
+                    mkdir -p "$log_folder" # Create log directory if it doesn't exist
+                    nohup python3 -m Parlamento_EJ.main -d "$nested_sub_directory" > "$log_path" 2>&1 &
                     wait # Wait for the background process to finish before continuing
                 else
                     python3 -m Parlamento_EJ.main -d "$nested_sub_directory"
@@ -50,3 +57,4 @@ for sub_directory in "$parent_directory"/*; do
         done
     fi
 done
+
