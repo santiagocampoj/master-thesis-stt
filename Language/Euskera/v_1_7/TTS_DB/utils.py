@@ -1,11 +1,7 @@
-import json
 import pandas as pd
 import os
-import logging
 from pathlib import Path
 from tqdm import tqdm
-import codecs
-import time
 import re
 
 #################
@@ -17,12 +13,13 @@ def db_name(path):
 def speaker_name(path):
     return Path(path).parts[4]
 
-def create_dir(path):
+def create_dir(path, logger):
     database = db_name(path)
     speaker = speaker_name(path)
         
     if not os.path.exists(f'{database}/logs/{speaker}/'):
         os.makedirs(f'{database}/logs/{speaker}/')
+        logger.info(f"")
     if not os.path.exists(f'{database}/results/{speaker}/'):
         os.makedirs(f'{database}/results/{speaker}/')
     return database, speaker
@@ -147,12 +144,12 @@ def save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_
     file_name = '{}/results/{}/{}_{}_{}_{}.csv'.format(database,speaker, stt.config['name'], stt.config['version'], database, speaker)
     with open(file_name, 'w') as file:
         final_results_df.to_csv(file, index=False)
-
+    
 
 ######################
 # LOGGER INFORMATION #
 ######################
-def wwer_info(total_audios, total_words, total_errors, wwer, mean_wer):
+def wwer_info(total_audios, total_words, total_errors, wwer, mean_wer, logger):
     logger.info("\nWWER INFO")
     logger.info(f'Total audios: \t{total_audios}')
     logger.info(f'Total words: \t{total_words}')
@@ -160,7 +157,7 @@ def wwer_info(total_audios, total_words, total_errors, wwer, mean_wer):
     logger.info(f"Weighted WER: \t{wwer}")
     logger.info(f"WER: \t{mean_wer}")
 
-def header_info(stt, path, total_audios, total_words):
+def header_info(stt, path, total_audios, total_words, logger):
     logger.info("\nHEADER INFO")
     logger.info(f"Model:\t\t {stt.config['name']}")
     logger.info(f"Version:\t {stt.config['version']}")
@@ -169,7 +166,7 @@ def header_info(stt, path, total_audios, total_words):
     logger.info(f'Total audios:\t {total_audios}')
     logger.info(f"Total words:\t {total_words}")
 
-def processing_info(idx, total_audios, audio_file, reference, hypothesis, wer, word_count, error_count):
+def processing_info(idx, total_audios, audio_file, reference, hypothesis, wer, word_count, error_count, logger):
     logger.info("\nPROCESSING INFO")
     logger.info(f"Processing audio #{idx} of {total_audios}")
     logger.info(f"Audio file: {audio_file}")
