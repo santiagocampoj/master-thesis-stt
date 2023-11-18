@@ -1,11 +1,8 @@
 import pandas as pd
 import os
-import logging
 from pathlib import Path
 import codecs
 from tqdm import tqdm
-
-logger = logging.getLogger("audio_processing")
 
 #################
 # PREPROCESSING #
@@ -63,9 +60,29 @@ def load_data(stt, text_path):
 ####################
 # PROCESSING AUDIO #
 ####################
-def transcribe_audio(stt, audio_path, reference, logger):
+def transcribe_audio(stt, audio_path, reference, start_time, end_time, logger):
+    if not reference or reference.strip() == "":
+        logger.info(f"Reference transcription missing or empty for {audio_path}. Skipping.")
+        return None
+
     try:
-        hypothesis = stt.run(audio_path)
+        hypothesis = stt.run(audio_path, start_time=start_time, end_time=end_time)
+        if not hypothesis or hypothesis.strip() == "":
+            logger.info(f"Hypothesis missing or empty for {audio_path}. Skipping.")
+            return None
+
+        reference_transformed = stt.transformation(reference)
+        hypothesis_transformed = stt.transformation(hypothesis)
+
+        # Check if either reference_transformed or hypothesis_transformed is empty
+        if not reference_transformed.strip() or not hypothesis_transformed.strip():
+            logger.info(f"Empty transformed reference or hypothesis for {audio_path}. Skipping WER calculation.")
+            return None
+
+        wer = stt.compute_wer(reference_transformed, hypothesis_transformed)
+        word_count = stt.compute_word_count(reference_transformed)
+        error_count = stt.compute_error_count(wer, word_count)
+    
     except FileNotFoundError:
         logger.info(f"File {audio_path} does not exist. Skipping.")
         return None
@@ -73,20 +90,13 @@ def transcribe_audio(stt, audio_path, reference, logger):
         logger.error(f"OS error occurred when processing file {audio_path}: {e}")
         return None
 
-    reference_transformed = stt.transformation(reference)
-    hypothesis_transformed = stt.transformation(hypothesis)
-
-    wer = stt.compute_wer(reference_transformed, hypothesis_transformed)
-    word_count = stt.compute_word_count(reference_transformed)
-    error_count = stt.compute_error_count(wer, word_count)
-    
     return wer, word_count, reference_transformed, hypothesis_transformed, error_count
 
 def process_audios(stt, validation_df, total_audios, path, logger):
     results_df = pd.DataFrame(columns=['audio_file', 'reference', 'hypothesis', 'wer', 'words', 'errors'])
 
-    # for idx, row in tqdm(validation_df.head(5).iterrows(), total=5, desc="Processing audios"):
-    for idx, row in tqdm(validation_df.iterrows(), total=total_audios, desc="Processing audios"):
+    for idx, row in tqdm(validation_df.head(2).iterrows(), total=5, desc="Processing audios"):
+    # for idx, row in tqdm(validation_df.iterrows(), total=total_audios, desc="Processing audios"):
         audio_file = row['wav_filename']
         reference = row['transcript']
         audio_path = path / audio_file
@@ -96,7 +106,6 @@ def process_audios(stt, validation_df, total_audios, path, logger):
             wer, word_count, reference_transformed, hypothesis_transformed, error_count = result
             results_df.loc[idx] = [audio_file, reference_transformed, hypothesis_transformed, wer, word_count, error_count]
             processing_info(stt, idx+1, total_audios, audio_file, reference_transformed, hypothesis_transformed, wer, word_count, error_count, logger)
-    
     return results_df
 
 def calculate_wwer(stt, results_df, total_audios, total_words, audio_path, database, logger):
@@ -121,11 +130,12 @@ def save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_
         'wwer': [wwer],
         'mean_wer': [mean_wer]
     })
-
-    file_name = f"{database}/results/{stt.config['name'].replace(' ', '_')}_{database}.csv"
-    with open(file_name, 'w') as file:
-        final_results_df.to_csv(file, index=False)
-
+    try:
+        file_name = f"{database}/results/{stt.config['name'].replace(' ', '_')}_{database}.csv"
+        with open(file_name, 'w') as file:
+            final_results_df.to_csv(file, index=False)
+    except Exception as e:
+        logger.error(f"Failed to save final results: {e}")
 
 ######################
 # LOGGER INFORMATION #

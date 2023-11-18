@@ -87,20 +87,26 @@ def transcribe_audio(stt, audio_path, reference, start_time, end_time, logger):
         logger.error(f"OS error occurred when processing file {audio_path}: {e}")
         return None
 
-    reference_transformed = stt.transformation(reference)
-    hypothesis_transformed = stt.transformation(hypothesis)
+    try:
+        reference_transformed = stt.transformation(reference)
+        hypothesis_transformed = stt.transformation(hypothesis)
 
-    wer = stt.compute_wer(reference_transformed, hypothesis_transformed)
-    word_count = stt.compute_word_count(reference_transformed)
-    error_count = stt.compute_error_count(wer, word_count)
+        wer = stt.compute_wer(reference_transformed, hypothesis_transformed)
+        word_count = stt.compute_word_count(reference_transformed)
+        error_count = stt.compute_error_count(wer, word_count)
     
-    return wer, word_count, reference_transformed, hypothesis_transformed, error_count
+        return wer, word_count, reference_transformed, hypothesis_transformed, error_count
+    except ValueError as e:
+        logger.error(f"Error computing WER for file {audio_path}: {e}")
+        return None
 
 def process_audios(stt, validation_df, total_audios, path, logger):
     results_df = pd.DataFrame(columns=['audio_file', 'reference', 'hypothesis', 'wer', 'words', 'errors'])
 
     for idx, row in tqdm(validation_df.iterrows(), total=total_audios, desc="Processing audios"):
-    # for idx, row in tqdm(validation_df.head(50).iterrows(), total=total_audios, desc="Processing audios"):
+    # for idx, row in tqdm(validation_df.head(1).iterrows(), total=total_audios, desc="Processing audios"):
+        # if idx < 520:
+        #     continue
         audio_file = row['wav_filename']
         reference = row['transcript']
         audio_path = path / audio_file
@@ -110,7 +116,6 @@ def process_audios(stt, validation_df, total_audios, path, logger):
             wer, word_count, reference_transformed, hypothesis_transformed, error_count = result
             results_df.loc[idx] = [audio_file, reference_transformed, hypothesis_transformed, wer, word_count, error_count]
             processing_info(idx+1, total_audios, audio_file, reference_transformed, hypothesis_transformed, wer, word_count, error_count, logger)
-    
     return results_df
 
 def calculate_wwer(stt, results_df, total_audios, total_words, audio_path, database, logger):
@@ -118,8 +123,8 @@ def calculate_wwer(stt, results_df, total_audios, total_words, audio_path, datab
     wwer = total_errors / total_words
     mean_wer = results_df['wer'].mean()
 
-    wwer_info(total_audios, total_words, total_errors, wwer, mean_wer)
-    save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_wer, audio_path, database)
+    wwer_info(total_audios, total_words, total_errors, wwer, mean_wer, logger)
+    save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_wer, audio_path, database, logger)
 
 
 ##################

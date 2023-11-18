@@ -7,7 +7,6 @@ from pathlib import Path
 import argparse
 
 def main():
-    # set parser
     parser = argparse.ArgumentParser(description="Insert the audio and text file to be processed.")
     parser.add_argument('-a', '--audio-path', required=True, help='Path to audio files directory.')
     parser.add_argument('-t', '--text-path', required=True, help='Path to text trancription.')

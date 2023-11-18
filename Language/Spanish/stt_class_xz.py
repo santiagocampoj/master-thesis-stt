@@ -9,7 +9,6 @@ from coqui_stt_model_manager.modelmanager import ModelManager
 import jiwer
 from model_config_xz import *
 
-# Set up logging configuration
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("pydub.converter").setLevel(logging.WARNING)
 

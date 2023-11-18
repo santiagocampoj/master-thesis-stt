@@ -74,7 +74,7 @@ def process_audios(stt, validation_df, total_audios, path, logger):
     results_df = pd.DataFrame(columns=['audio_file', 'reference', 'hypothesis', 'wer', 'words', 'errors'])
 
     for idx, row in tqdm(validation_df.iterrows(), total=total_audios, desc="Processing audios"):
-    # for idx, row in tqdm(validation_df.head(5).iterrows(), total=5, desc="Processing audios"):
+    # for idx, row in tqdm(validation_df.head(1).iterrows(), total=5, desc="Processing audios"):
         audio_file = row['wav_filename']
         reference = row['transcript']
         audio_path = path / audio_file
@@ -87,13 +87,13 @@ def process_audios(stt, validation_df, total_audios, path, logger):
     
     return results_df
 
-def calculate_wwer(stt, results_df, total_audios, total_words, audio_path, database):
+def calculate_wwer(stt, results_df, total_audios, total_words, audio_path, database, logger):
     total_errors = results_df['errors'].sum()
     wwer = total_errors / total_words
     mean_wer = results_df['wer'].mean()
 
-    wwer_info(total_audios, total_words, total_errors, wwer, mean_wer)
-    save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_wer, audio_path, database)
+    wwer_info(total_audios, total_words, total_errors, wwer, mean_wer, logger)
+    save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_wer, audio_path, database, logger)
 
 
 ##################

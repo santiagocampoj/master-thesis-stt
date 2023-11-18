@@ -35,9 +35,28 @@ def load_data(stt, prompt_path, audio_list_path):
 ####################
 # PROCESSING AUDIO #
 ####################
-def transcribe_audio(stt, audio_path, reference, logger):
+def transcribe_audio(stt, audio_path, reference, start_time, end_time, logger):
+    if not reference or reference.strip() == "":
+        logger.info(f"Reference transcription missing or empty for {audio_path}. Skipping.")
+        return None
+
     try:
-        hypothesis = stt.run(audio_path)
+        hypothesis = stt.run(audio_path, start_time=start_time, end_time=end_time)
+        if not hypothesis or hypothesis.strip() == "":
+            logger.info(f"Hypothesis missing or empty for {audio_path}. Skipping.")
+            return None
+
+        reference_transformed = stt.transformation(reference)
+        hypothesis_transformed = stt.transformation(hypothesis)
+
+        if not reference_transformed.strip() or not hypothesis_transformed.strip():
+            logger.info(f"Empty transformed reference or hypothesis for {audio_path}. Skipping WER calculation.")
+            return None
+
+        wer = stt.compute_wer(reference_transformed, hypothesis_transformed)
+        word_count = stt.compute_word_count(reference_transformed)
+        error_count = stt.compute_error_count(wer, word_count)
+    
     except FileNotFoundError:
         logger.info(f"File {audio_path} does not exist. Skipping.")
         return None
@@ -45,17 +64,6 @@ def transcribe_audio(stt, audio_path, reference, logger):
         logger.error(f"OS error occurred when processing file {audio_path}: {e}")
         return None
 
-    reference_transformed = stt.transformation(reference)
-    hypothesis_transformed = stt.transformation(hypothesis)
-    
-    if not reference_transformed:
-        logger.warning(f"Empty reference for audio: {audio_path}. Skipping WER calculation.")
-        return None
-
-    wer = stt.compute_wer(reference_transformed, hypothesis_transformed)
-    word_count = stt.compute_word_count(reference_transformed)
-    error_count = stt.compute_error_count(wer, word_count)
-    
     return wer, word_count, reference_transformed, hypothesis_transformed, error_count
 
 def process_audios(stt, df, total_audios, path, logger):
@@ -97,7 +105,6 @@ def save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_
         'wwer': [wwer],
         'mean_wer': [mean_wer]
     })
-
     file_name = f"{database}/results/{stt.config['name'].replace(' ', '_')}_{database}.csv"
     with open(file_name, 'w') as file:
         final_results_df.to_csv(file, index=False)

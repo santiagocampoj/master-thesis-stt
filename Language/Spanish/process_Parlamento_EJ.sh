@@ -39,8 +39,12 @@ fi
 for sub_directory in "$parent_directory"/*; do
     if [ -d "$sub_directory" ]; then
         sub_dir_name=$(basename "$sub_directory")
+        echo "This is the subdirectory $sub_directory"
+
         for nested_sub_directory in "$sub_directory"/*; do
             if [ -d "$nested_sub_directory" ]; then
+                echo "This is the nested_sub_directory: $nested_sub_directory"
+
                 nested_sub_dir_name=$(basename "$nested_sub_directory")
                 log_folder="/home/aholab/santi/Documents/audio_process/Language/Spanish/Parlamento_EJ/nohup_logs/${sub_dir_name}"
                 log_path="${log_folder}/${nested_sub_dir_name}.log"

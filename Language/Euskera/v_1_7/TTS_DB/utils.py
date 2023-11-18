@@ -13,13 +13,12 @@ def db_name(path):
 def speaker_name(path):
     return Path(path).parts[4]
 
-def create_dir(path, logger):
+def create_dir(path):
     database = db_name(path)
     speaker = speaker_name(path)
         
     if not os.path.exists(f'{database}/logs/{speaker}/'):
         os.makedirs(f'{database}/logs/{speaker}/')
-        logger.info(f"")
     if not os.path.exists(f'{database}/results/{speaker}/'):
         os.makedirs(f'{database}/results/{speaker}/')
     return database, speaker
@@ -45,14 +44,16 @@ def load_data(stt, prompt_path=None, wave_path=None, combined_path=None):
     wav_files = [file for file in os.listdir(wave_path) if file.endswith('.wav')]
     if not wav_files:
         raise ValueError("No audio file found in the directory.")
-    
+
     transcripts = []
     for wav_file in wav_files:
-        if "_02.wav" in wav_file:
-            txt_filename = wav_file.replace('_02.wav', '.txt')
+        match = re.search(r'\d+', wav_file)
+        if match:
+            file_number = match.group()
+            txt_filename = f'amaia{int(file_number)}.txt'
         else:
-            txt_filename = wav_file.replace('.wav', '.txt')
-        
+            raise ValueError(f"Could not find a numeric part in the wav file name: {wav_file}")
+
         txt_filepath = os.path.join(prompt_path, txt_filename)
         
         if not os.path.exists(txt_filepath):
@@ -77,8 +78,26 @@ def load_data(stt, prompt_path=None, wave_path=None, combined_path=None):
 # PROCESSING AUDIO #
 ####################
 def transcribe_audio(stt, audio_path, reference, logger):
+    if not reference or reference.strip() == "":
+        logger.info(f"Reference transcription missing or empty for {audio_path}. Skipping.")
+        return None
     try:
         hypothesis = stt.run(audio_path)
+        if not hypothesis or hypothesis.strip() == "":
+            logger.info(f"Hypothesis missing or empty for {audio_path}. Skipping.")
+            return None
+
+        reference_transformed = stt.transformation(reference)
+        hypothesis_transformed = stt.transformation(hypothesis)
+
+        if not reference_transformed.strip() or not hypothesis_transformed.strip():
+            logger.info(f"Empty transformed reference or hypothesis for {audio_path}. Skipping WER calculation.")
+            return None
+
+        wer = stt.compute_wer(reference_transformed, hypothesis_transformed)
+        word_count = stt.compute_word_count(reference_transformed)
+        error_count = stt.compute_error_count(wer, word_count)
+    
     except FileNotFoundError:
         logger.info(f"File {audio_path} does not exist. Skipping.")
         return None
@@ -86,17 +105,6 @@ def transcribe_audio(stt, audio_path, reference, logger):
         logger.error(f"OS error occurred when processing file {audio_path}: {e}")
         return None
 
-    reference_transformed = stt.transformation(reference)
-    hypothesis_transformed = stt.transformation(hypothesis)
-    
-    if not reference_transformed:
-        logger.warning(f"Empty reference for audio: {audio_path}. Skipping WER calculation.")
-        return None
-
-    wer = stt.compute_wer(reference_transformed, hypothesis_transformed)
-    word_count = stt.compute_word_count(reference_transformed)
-    error_count = stt.compute_error_count(wer, word_count)
-    
     return wer, word_count, reference_transformed, hypothesis_transformed, error_count
 
 def process_audios(stt, validation_df, total_audios, path, logger):
@@ -113,7 +121,6 @@ def process_audios(stt, validation_df, total_audios, path, logger):
             wer, word_count, reference_transformed, hypothesis_transformed, error_count = result
             results_df.loc[idx] = [audio_file, reference_transformed, hypothesis_transformed, wer, word_count, error_count]
             processing_info(idx+1, total_audios, audio_file, reference_transformed, hypothesis_transformed, wer, word_count, error_count, logger)
-    
     return results_df
 
 def calculate_wwer(stt, results_df, total_audios, total_words, audio_path, database, speaker, logger):
@@ -128,10 +135,10 @@ def calculate_wwer(stt, results_df, total_audios, total_words, audio_path, datab
 ##################
 # SAVING RESULTS #
 ##################
-def save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_wer, audio_path, database, speaker):
+def save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_wer, audio_path, database, speaker, logger):
     final_results_df = pd.DataFrame({
         'model': [stt.config['name']],
-        'version': [stt.config['version']],
+        'language': [stt.lang],
         'database': [database],
         'speaker': [speaker],
         'total_audios': [total_audios],
@@ -140,12 +147,14 @@ def save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_
         'wwer': [wwer],
         'wer': [mean_wer]
     })
+    try:
+        file_name = f"{database}/results/{speaker}/{stt.config['name'].replace('.', '_')}_{database}_{speaker}.csv"
+        file_name = file_name.replace(' ', '_')
+        with open(file_name, 'w') as file:
+            final_results_df.to_csv(file, index=False)
+    except Exception as e:
+        logger.error(f"Failed to save final results: {e}")
     
-    file_name = '{}/results/{}/{}_{}_{}_{}.csv'.format(database,speaker, stt.config['name'], stt.config['version'], database, speaker)
-    with open(file_name, 'w') as file:
-        final_results_df.to_csv(file, index=False)
-    
-
 ######################
 # LOGGER INFORMATION #
 ######################
@@ -174,4 +183,4 @@ def processing_info(idx, total_audios, audio_file, reference, hypothesis, wer, w
     logger.info(f"\tHypothesis: \t\t{hypothesis}")
     logger.info(f"\tWord Error Rate: \t\t\t{wer}")
     logger.info(f"\tWords in reference: \t\t{word_count}")
-    logger.info(f"\tWrong Words: \t\t\t\t{error_count}")
+    logger.info(f"\tWrong Words in hypothesis: \t{error_count}")
