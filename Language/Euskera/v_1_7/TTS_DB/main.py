@@ -9,7 +9,7 @@ import argparse
 def main():
     parser = argparse.ArgumentParser(description="Insert the audio and text file to be processed.")
     parser.add_argument('-a', '--audio-path', required=True, help='Path to audio files directory.')
-    parser.add_argument('-t', '--text-path', required=True, help='Path to text trancription.')
+    parser.add_argument('-t', '--text-path', required=False, help='Path to text trancription.')
     args = parser.parse_args()
 
     language_code = 'eu'

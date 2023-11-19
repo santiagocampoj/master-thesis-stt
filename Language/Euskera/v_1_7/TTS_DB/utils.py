@@ -47,18 +47,22 @@ def load_data(stt, prompt_path=None, wave_path=None, combined_path=None):
 
     transcripts = []
     for wav_file in wav_files:
-        match = re.search(r'\d+', wav_file)
-        if match:
-            file_number = match.group()
-            txt_filename = f'amaia{int(file_number)}.txt'
-        else:
-            raise ValueError(f"Could not find a numeric part in the wav file name: {wav_file}")
-
+        txt_filename = wav_file.split(".")[0] + ".txt"
         txt_filepath = os.path.join(prompt_path, txt_filename)
-        
+
         if not os.path.exists(txt_filepath):
-            raise ValueError(f"Transcription file {txt_filepath} does not exist.")
-        
+            # Match three letters followed by three digits pattern
+            match_pattern_letters_three_digit = re.search(r'([A-Z]{3})(\d{3})', wav_file, re.IGNORECASE)
+            if match_pattern_letters_three_digit:
+                # Remove leading zeros for the numeric part
+                letter_part = match_pattern_letters_three_digit.group(1)
+                number_part = int(match_pattern_letters_three_digit.group(2))  # Convert to int to remove leading zeros
+                txt_filename = f"{letter_part}{number_part}.txt"
+                txt_filepath = os.path.join(prompt_path, txt_filename)
+
+            if not os.path.exists(txt_filepath):
+                raise ValueError(f"Transcription file {txt_filepath} does not exist.")
+
         with open(txt_filepath, 'r', encoding='ISO-8859-15') as txt_file:
             transcript = txt_file.readline().strip()
             transcripts.append(transcript)

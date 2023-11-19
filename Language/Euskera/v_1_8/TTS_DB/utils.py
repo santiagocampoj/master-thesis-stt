@@ -44,19 +44,25 @@ def load_data(stt, prompt_path=None, wave_path=None, combined_path=None):
     wav_files = [file for file in os.listdir(wave_path) if file.endswith('.wav')]
     if not wav_files:
         raise ValueError("No audio file found in the directory.")
-    
+
     transcripts = []
     for wav_file in wav_files:
-        if "_02.wav" in wav_file:
-            txt_filename = wav_file.replace('_02.wav', '.txt')
-        else:
-            txt_filename = wav_file.replace('.wav', '.txt')
-        
+        txt_filename = wav_file.split(".")[0] + ".txt"
         txt_filepath = os.path.join(prompt_path, txt_filename)
-        
+
         if not os.path.exists(txt_filepath):
-            raise ValueError(f"Transcription file {txt_filepath} does not exist.")
-        
+            # Match three letters followed by three digits pattern
+            match_pattern_letters_three_digit = re.search(r'([A-Z]{3})(\d{3})', wav_file, re.IGNORECASE)
+            if match_pattern_letters_three_digit:
+                # Remove leading zeros for the numeric part
+                letter_part = match_pattern_letters_three_digit.group(1)
+                number_part = int(match_pattern_letters_three_digit.group(2))  # Convert to int to remove leading zeros
+                txt_filename = f"{letter_part}{number_part}.txt"
+                txt_filepath = os.path.join(prompt_path, txt_filename)
+
+            if not os.path.exists(txt_filepath):
+                raise ValueError(f"Transcription file {txt_filepath} does not exist.")
+
         with open(txt_filepath, 'r', encoding='ISO-8859-15') as txt_file:
             transcript = txt_file.readline().strip()
             transcripts.append(transcript)
@@ -146,7 +152,7 @@ def save_final_results(stt, total_audios, total_words, total_errors, wwer, mean_
         'wer': [mean_wer]
     })
     try:
-        file_name = f"{database}/results/{stt.config['name'].replace('.', '_')}_{database}_{speaker}.csv"
+        file_name = f"{database}/results/{speaker}/{stt.config['name'].replace('.', '_')}_{database}_{speaker}.csv"
         file_name = file_name.replace(' ', '_')
         with open(file_name, 'w') as file:
             final_results_df.to_csv(file, index=False)

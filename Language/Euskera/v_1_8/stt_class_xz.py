@@ -117,11 +117,19 @@ class STT:
         else:
             logging.info("Alpha and Beta hyperparameters are not set in config.")
 
-    def run(self, audio_path):
-        # logging.debug('[STT:%s] Audio path: %s', self.lang, audio_path) # indicate language and audio
-        desired_sample_rate = self.model.sampleRate() # change the sr
-        audio = read_wav(audio_path, desired_sample_rate) # open the audio at the desired sr
-        text = self.model.stt(audio) # transcription from the model
+    def run(self, audio_path, start_time=None, end_time=None):
+        if start_time is not None and end_time is not None:
+            sound = pydub.AudioSegment.from_file(audio_path)
+            segment = sound[start_time * 1000:end_time * 1000]
+            if segment.frame_rate != self.model.sampleRate():
+                segment = segment.set_frame_rate(self.model.sampleRate())
+            audio = np.array(segment.get_array_of_samples())
+        else:
+            # logging.debug('[STT:%s] Audio path: %s', self.lang, audio_path)
+            desired_sample_rate = self.model.sampleRate()
+            audio = read_wav(audio_path, desired_sample_rate)
+
+        text = self.model.stt(audio)
         return text
 
     def compute_wer(self, reference, hypothesis):

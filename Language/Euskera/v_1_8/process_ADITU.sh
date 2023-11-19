@@ -36,24 +36,21 @@ fi
 for block_directory in "$parent_directory"/*; do
     if [ -d "$block_directory" ]; then
         block_dir_name=$(basename "$block_directory")
+        for ses_directory in "$block_directory"/*; do
+            if [ -d "$ses_directory" ]; then
+                ses_dir_name=$(basename "$ses_directory")
+                log_folder="/home/aholab/santi/Documents/audio_process/Language/Euskera/v_1_8/ADITU/nohup_logs/${block_dir_name}"
+                log_path="${log_folder}/${ses_dir_name}.log"
 
-        # Check if the directory should be processed with a single path or separate wav/txt paths
-        if [ "$block_dir_name" == "urkullu_eu" ]; then
-            command="python3 -m TTS_DB.main -a $block_directory"
-        else
-            command="python3 -m TTS_DB.main -a $block_directory/wav/ -t $block_directory/txt/"
-        fi
-
-        log_folder="/home/aholab/santi/Documents/audio_process/Language/Euskera/v_1_8/TTS_DB/nohup_logs/${block_dir_name}"
-        log_path="${log_folder}/${block_dir_name}.log"
-
-        echo "Running command: $command"
-        if $use_nohup; then
-            mkdir -p "$log_folder"
-            nohup $command > "$log_path" 2>&1 &
-            wait
-        else
-            $command
-        fi
+                echo "Processing directory: $ses_directory"
+                if $use_nohup; then
+                    mkdir -p "$log_folder"
+                    nohup python3 -m ADITU.main -a "$ses_directory" -t "$ses_directory" > "$log_path" 2>&1 &
+                    wait 
+                else
+                    python3 -m ADITU.main -a "$ses_directory" -t "$ses_directory"
+                fi
+            fi
+        done
     fi
 done
